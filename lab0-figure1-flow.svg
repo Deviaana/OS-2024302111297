@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1800" height="1320" viewBox="0 0 1800 1320">
+  <defs>
+    <style>
+      .bg { fill: #f6f8fb; }
+      .lane { fill: #ffffff; stroke: #cbd5e1; stroke-width: 2; rx: 14; }
+      .title { font: 700 34px "Microsoft YaHei", sans-serif; fill: #12233f; }
+      .subtitle { font: 18px "Microsoft YaHei", sans-serif; fill: #475569; }
+      .heading { font: 700 23px "Microsoft YaHei", sans-serif; fill: #1e293b; }
+      .main { font: 700 19px "Microsoft YaHei", sans-serif; fill: #172033; }
+      .note { font: 16px "Microsoft YaHei", sans-serif; fill: #475569; }
+      .user { fill: #e8f0ff; stroke: #4f73b8; stroke-width: 2; rx: 10; }
+      .kernel { fill: #e9f8ef; stroke: #3b9560; stroke-width: 2; rx: 10; }
+      .wait { fill: #fff5df; stroke: #c78a2c; stroke-width: 2; rx: 10; }
+      .event { fill: #ffecec; stroke: #c95656; stroke-width: 2; rx: 10; }
+      .tip { fill: #fff; stroke: #94a3b8; stroke-width: 1.5; rx: 10; }
+      .arrow { stroke: #334155; stroke-width: 3; fill: none; marker-end: url(#arrow); }
+    </style>
+    <marker id="arrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">
+      <path d="M0,0 L12,6 L0,12 z" fill="#334155"/>
+    </marker>
+  </defs>
+  <rect class="bg" width="1800" height="1320"/>
+  <text class="title" x="60" y="62">运行 echo hi：一条命令是怎样显示到屏幕上的？</text>
+  <text class="subtitle" x="60" y="98">把它想成一条流水线：Shell 接收命令，创建 echo，echo 输出文字，最后退出。</text>
+
+  <rect class="lane" x="40" y="135" width="1720" height="305"/>
+  <text class="heading" x="65" y="175">第一步：Shell 先等你输入（等待不是死机）</text>
+  <rect class="user" x="75" y="215" width="285" height="92"/>
+  <text class="main" x="98" y="252">Shell 循环</text>
+  <text class="note" x="98" y="281">一直准备接收下一条命令</text>
+  <rect class="kernel" x="425" y="215" width="320" height="92"/>
+  <text class="main" x="448" y="252">read(0, buf, ...)</text>
+  <text class="note" x="448" y="281">Shell 请求内核读取键盘</text>
+  <rect class="wait" x="810" y="215" width="330" height="92"/>
+  <text class="main" x="833" y="252">暂时睡眠（SLEEPING）</text>
+  <text class="note" x="833" y="281">没有输入，就把 CPU 让给别人</text>
+  <rect class="event" x="1205" y="215" width="265" height="92"/>
+  <text class="main" x="1228" y="252">键盘中断</text>
+  <text class="note" x="1228" y="281">输入的字符到达</text>
+  <rect class="kernel" x="1535" y="215" width="185" height="92"/>
+  <text class="main" x="1558" y="252">继续 read</text>
+  <text class="note" x="1558" y="281">拿到 echo hi</text>
+  <path class="arrow" d="M360 261 L425 261"/>
+  <path class="arrow" d="M745 261 L810 261"/>
+  <path class="arrow" d="M1140 261 L1205 261"/>
+  <path class="arrow" d="M1470 261 L1535 261"/>
+  <text class="note" x="630" y="370">中断把正在睡觉的 Shell 叫醒，read 才能返回。</text>
+
+  <rect class="lane" x="40" y="475" width="1720" height="350"/>
+  <text class="heading" x="65" y="515">第二步：Shell 创建 echo，并让它开始工作</text>
+  <rect class="user" x="75" y="555" width="270" height="92"/>
+  <text class="main" x="98" y="592">fork() / kfork()</text>
+  <text class="note" x="98" y="621">先复制出一个子进程</text>
+  <rect class="kernel" x="410" y="555" width="300" height="92"/>
+  <text class="main" x="433" y="592">子进程准备好了</text>
+  <text class="note" x="433" y="621">复制文件、寄存器等信息</text>
+  <rect class="user" x="775" y="555" width="300" height="92"/>
+  <text class="main" x="798" y="592">exec("echo") / kexec</text>
+  <text class="note" x="798" y="621">把子进程换成 echo 程序</text>
+  <rect class="wait" x="1140" y="555" width="280" height="92"/>
+  <text class="main" x="1163" y="592">调度器选择它</text>
+  <text class="note" x="1163" y="621">scheduler() 决定谁运行</text>
+  <rect class="kernel" x="1485" y="555" width="235" height="92"/>
+  <text class="main" x="1508" y="592">回到用户态</text>
+  <text class="note" x="1508" y="621">echo 真正开始执行</text>
+  <path class="arrow" d="M345 601 L410 601"/>
+  <path class="arrow" d="M710 601 L775 601"/>
+  <path class="arrow" d="M1075 601 L1140 601"/>
+  <path class="arrow" d="M1420 601 L1485 601"/>
+  <rect class="tip" x="75" y="690" width="1645" height="92"/>
+  <text class="note" x="98" y="727">记忆方法：fork 是“复制一个人”，exec 是“让这个人换一份工作”。</text>
+  <text class="note" x="98" y="758">exec 不会新建 pid；它只是把原来的用户程序替换成 echo。</text>
+
+  <rect class="lane" x="40" y="860" width="1720" height="380"/>
+  <text class="heading" x="65" y="900">第三步：echo 输出 hi，然后退出</text>
+  <rect class="user" x="75" y="940" width="270" height="92"/>
+  <text class="main" x="98" y="977">echo 程序</text>
+  <text class="note" x="98" y="1006">调用 write(1, "hi", 2)</text>
+  <rect class="kernel" x="410" y="940" width="300" height="92"/>
+  <text class="main" x="433" y="977">内核处理 write</text>
+  <text class="note" x="433" y="1006">根据 fd=1 找到输出对象</text>
+  <rect class="event" x="775" y="940" width="300" height="92"/>
+  <text class="main" x="798" y="977">console / UART</text>
+  <text class="note" x="798" y="1006">把 hi 送到终端</text>
+  <rect class="wait" x="1140" y="940" width="280" height="92"/>
+  <text class="main" x="1163" y="977">exit() / kexit()</text>
+  <text class="note" x="1163" y="1006">echo 完成，进入 ZOMBIE</text>
+  <rect class="kernel" x="1485" y="940" width="235" height="92"/>
+  <text class="main" x="1508" y="977">Shell wait()</text>
+  <text class="note" x="1508" y="1006">收拾子进程，继续循环</text>
+  <path class="arrow" d="M345 986 L410 986"/>
+  <path class="arrow" d="M710 986 L775 986"/>
+  <path class="arrow" d="M1075 986 L1140 986"/>
+  <path class="arrow" d="M1420 986 L1485 986"/>
+  <rect class="tip" x="75" y="1075" width="1645" height="125"/>
+  <text class="note" x="98" y="1115">整条主线：输入命令 → fork → exec → write → exit → wait。</text>
+  <text class="note" x="98" y="1150">你在终端看到的 hi，其实是 echo 通过系统调用，请内核帮它输出的。</text>
+  <text class="note" x="98" y="1185">颜色提示：蓝色是用户程序，绿色是内核处理，橙色是等待/调度，红色是外部事件或结束。</text>
+</svg>

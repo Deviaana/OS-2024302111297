@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1800" height="1280" viewBox="0 0 1800 1280">
+  <defs>
+    <style>
+      .bg { fill: #f7f9fc; }
+      .panel { fill: #fff; stroke: #cbd5e1; stroke-width: 2; rx: 14; }
+      .title { font: 700 34px "Microsoft YaHei", sans-serif; fill: #12233f; }
+      .subtitle { font: 18px "Microsoft YaHei", sans-serif; fill: #475569; }
+      .heading { font: 700 23px "Microsoft YaHei", sans-serif; fill: #1e293b; }
+      .main { font: 700 19px "Microsoft YaHei", sans-serif; fill: #172033; }
+      .note { font: 15px "Microsoft YaHei", sans-serif; fill: #475569; }
+      .blue { fill: #eaf1ff; stroke: #6885c5; stroke-width: 1.8; rx: 10; }
+      .green { fill: #eaf8ef; stroke: #67a878; stroke-width: 1.8; rx: 10; }
+      .amber { fill: #fff5df; stroke: #c9943d; stroke-width: 1.8; rx: 10; }
+      .gray { fill: #f1f5f9; stroke: #94a3b8; stroke-width: 1.8; rx: 10; }
+    </style>
+  </defs>
+  <rect class="bg" width="1800" height="1280"/>
+  <text class="title" x="60" y="62">echo 运行时，进程里到底装了什么？</text>
+  <text class="subtitle" x="60" y="98">这是一张“暂停一下看内部”的快照：左边看进程，中间看内存，右边看文件描述符。</text>
+
+  <rect class="panel" x="40" y="135" width="540" height="1080"/>
+  <text class="heading" x="70" y="177">1. 进程表：现在有哪些进程？</text>
+  <rect class="green" x="70" y="215" width="480" height="145"/>
+  <text class="main" x="94" y="253">shell（父进程）</text>
+  <text class="note" x="94" y="284">状态：SLEEPING，正在等输入或等子进程</text>
+  <text class="note" x="94" y="315">它创建了 echo，所以 parent 指向 shell</text>
+  <text class="note" x="94" y="346">通常 fd 0/1/2 都连接到 console</text>
+  <rect class="amber" x="70" y="390" width="480" height="170"/>
+  <text class="main" x="94" y="428">echo（子进程）</text>
+  <text class="note" x="94" y="459">状态：RUNNABLE 或 RUNNING</text>
+  <text class="note" x="94" y="490">fork 后有新 pid，parent 是 shell</text>
+  <text class="note" x="94" y="521">exec 后，身体换成 echo 的代码</text>
+  <text class="note" x="94" y="552">但打开的文件仍然可以继续使用</text>
+  <rect class="blue" x="70" y="590" width="480" height="140"/>
+  <text class="main" x="94" y="628">init（系统的“收养人”）</text>
+  <text class="note" x="94" y="659">当某个进程的父进程先退出，init 可能接管它</text>
+  <text class="note" x="94" y="690">本例重点不是 init，可以先把它当背景角色</text>
+  <rect class="gray" x="70" y="760" width="480" height="395"/>
+  <text class="main" x="94" y="800">读进程表时只先看三件事</text>
+  <text class="note" x="94" y="836">state：它现在是在跑、能跑、睡觉，还是已退出</text>
+  <text class="note" x="94" y="875">parent：谁创建了它</text>
+  <text class="note" x="94" y="914">pagetable：它的虚拟内存地图</text>
+  <text class="note" x="94" y="953">ofile[]：它手里有哪些打开的文件</text>
+  <text class="note" x="94" y="1007">ZOMBIE 不是“还在运行”，而是程序已经结束，</text>
+  <text class="note" x="94" y="1038">只是等父进程 wait() 把退出信息收走。</text>
+
+  <rect class="panel" x="615" y="135" width="570" height="1080"/>
+  <text class="heading" x="645" y="177">2. 内存地图：程序住在哪里？</text>
+  <rect class="blue" x="650" y="215" width="500" height="116"/>
+  <text class="main" x="674" y="253">最高处：trampoline</text>
+  <text class="note" x="674" y="284">进出内核时经过的一小段公共代码</text>
+  <text class="note" x="674" y="315">所有进程都映射到相同的高地址</text>
+  <rect class="amber" x="650" y="360" width="500" height="116"/>
+  <text class="main" x="674" y="398">trapframe</text>
+  <text class="note" x="674" y="429">暂存寄存器，像“被打断时的存档”</text>
+  <text class="note" x="674" y="460">返回用户态时要靠它恢复现场</text>
+  <rect class="green" x="650" y="505" width="500" height="160"/>
+  <text class="main" x="674" y="543">echo 的用户空间</text>
+  <text class="note" x="674" y="574">代码段：放要执行的指令</text>
+  <text class="note" x="674" y="605">数据/堆：放变量和动态申请的内容</text>
+  <text class="note" x="674" y="636">exec 后，这里换成 echo 的新程序</text>
+  <rect class="gray" x="650" y="695" width="500" height="132"/>
+  <text class="main" x="674" y="733">用户栈和 guard page</text>
+  <text class="note" x="674" y="764">栈放函数调用信息；guard page 用来拦住栈溢出</text>
+  <text class="note" x="674" y="795">栈向下长，堆通常向上长</text>
+  <rect class="gray" x="650" y="860" width="500" height="295"/>
+  <text class="main" x="674" y="900">权限先这样理解</text>
+  <text class="note" x="674" y="938">R：可以读；W：可以写；X：可以执行</text>
+  <text class="note" x="674" y="976">U：用户程序可以访问；没有 U：只有内核能访问</text>
+  <text class="note" x="674" y="1030">所以 trampoline 能执行，但用户不能随便读写它。</text>
+  <text class="note" x="674" y="1068">trapframe 需要让内核读写，但不能暴露给用户程序。</text>
+
+  <rect class="panel" x="1220" y="135" width="540" height="1080"/>
+  <text class="heading" x="1250" y="177">3. 文件描述符：1 为什么能输出？</text>
+  <rect class="green" x="1255" y="215" width="470" height="150"/>
+  <text class="main" x="1279" y="253">echo 的 ofile[]</text>
+  <text class="note" x="1279" y="284">fd 0：标准输入，通常是键盘</text>
+  <text class="note" x="1279" y="315">fd 1：标准输出，通常是屏幕</text>
+  <text class="note" x="1279" y="346">fd 2：标准错误输出，也通常是屏幕</text>
+  <rect class="amber" x="1255" y="400" width="470" height="170"/>
+  <text class="main" x="1279" y="438">struct file</text>
+  <text class="note" x="1279" y="469">ofile[1] 里保存的是一个“文件对象指针”</text>
+  <text class="note" x="1279" y="500">这个对象记录：它是什么、能不能读写、引用了几次</text>
+  <text class="note" x="1279" y="531">fork 时父子进程可以共同引用它</text>
+  <text class="note" x="1279" y="562">所以 exec 后 stdout 还在</text>
+  <rect class="blue" x="1255" y="605" width="470" height="155"/>
+  <text class="main" x="1279" y="643">console / UART</text>
+  <text class="note" x="1279" y="674">filewrite() 发现这是设备文件</text>
+  <text class="note" x="1279" y="705">于是把字符交给 console，再交给 UART</text>
+  <text class="note" x="1279" y="736">最后终端上出现 hi</text>
+  <rect class="gray" x="1255" y="795" width="470" height="360"/>
+  <text class="main" x="1279" y="835">把输出路线串起来</text>
+  <text class="note" x="1279" y="875">write(1, "hi", 2)</text>
+  <text class="note" x="1279" y="913">→ fd 1</text>
+  <text class="note" x="1279" y="951">→ proc.ofile[1]</text>
+  <text class="note" x="1279" y="989">→ struct file</text>
+  <text class="note" x="1279" y="1027">→ console 的 write</text>
+  <text class="note" x="1279" y="1065">→ UART</text>
+  <text class="note" x="1279" y="1115">一句话：fd 1 只是“输出编号”，真正干活的是它指向的对象。</text>
+</svg>

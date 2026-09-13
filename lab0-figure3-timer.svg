@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1800" height="1260" viewBox="0 0 1800 1260">
+  <defs>
+    <style>
+      .bg { fill: #f7f9fc; }
+      .panel { fill: #fff; stroke: #cbd5e1; stroke-width: 2; rx: 14; }
+      .title { font: 700 34px "Microsoft YaHei", sans-serif; fill: #12233f; }
+      .subtitle { font: 18px "Microsoft YaHei", sans-serif; fill: #475569; }
+      .heading { font: 700 23px "Microsoft YaHei", sans-serif; fill: #1e293b; }
+      .main { font: 700 19px "Microsoft YaHei", sans-serif; fill: #172033; }
+      .note { font: 15px "Microsoft YaHei", sans-serif; fill: #475569; }
+      .user { fill: #eaf1ff; stroke: #6885c5; stroke-width: 1.8; rx: 10; }
+      .kernel { fill: #eaf8ef; stroke: #67a878; stroke-width: 1.8; rx: 10; }
+      .wait { fill: #fff5df; stroke: #c9943d; stroke-width: 1.8; rx: 10; }
+      .event { fill: #ffecec; stroke: #c95656; stroke-width: 1.8; rx: 10; }
+      .gray { fill: #f1f5f9; stroke: #94a3b8; stroke-width: 1.8; rx: 10; }
+      .line { stroke: #475569; stroke-width: 2.7; fill: none; marker-end: url(#arrow); }
+    </style>
+    <marker id="arrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">
+      <path d="M0,0 L12,6 L0,12 z" fill="#475569"/>
+    </marker>
+  </defs>
+  <rect class="bg" width="1800" height="1260"/>
+  <text class="title" x="60" y="62">一次时钟中断：CPU 为什么会暂时换一个进程？</text>
+  <text class="subtitle" x="60" y="98">可以把 timer 想成闹钟：闹钟响了，内核记一次时间，并检查要不要把 CPU 让给别人。</text>
+
+  <rect class="panel" x="40" y="135" width="1720" height="355"/>
+  <text class="heading" x="65" y="177">第一段：从用户程序进入内核</text>
+  <rect class="user" x="75" y="220" width="280" height="92"/>
+  <text class="main" x="98" y="257">用户程序正在运行</text>
+  <text class="note" x="98" y="286">U 态，使用用户栈</text>
+  <rect class="event" x="430" y="220" width="300" height="92"/>
+  <text class="main" x="453" y="257">timer 闹钟响了</text>
+  <text class="note" x="453" y="286">硬件发来时钟中断</text>
+  <rect class="kernel" x="805" y="220" width="280" height="92"/>
+  <text class="main" x="828" y="257">usertrap()</text>
+  <text class="note" x="828" y="286">保存现场，进入内核</text>
+  <rect class="kernel" x="1160" y="220" width="300" height="92"/>
+  <text class="main" x="1183" y="257">devintr() / clockintr()</text>
+  <text class="note" x="1183" y="286">判断：这是时钟中断</text>
+  <rect class="wait" x="1535" y="220" width="185" height="92"/>
+  <text class="main" x="1558" y="257">yield()</text>
+  <text class="note" x="1558" y="286">考虑换人</text>
+  <path class="line" d="M355 266 L430 266"/>
+  <path class="line" d="M730 266 L805 266"/>
+  <path class="line" d="M1085 266 L1160 266"/>
+  <path class="line" d="M1460 266 L1535 266"/>
+  <text class="note" x="600" y="380">中断不是程序主动调用的，而是硬件在合适的时间提醒内核。</text>
+
+  <rect class="panel" x="40" y="525" width="1720" height="320"/>
+  <text class="heading" x="65" y="567">第二段：内核处理闹钟，并把 CPU 交给调度器</text>
+  <rect class="kernel" x="75" y="610" width="325" height="112"/>
+  <text class="main" x="98" y="648">clockintr()</text>
+  <text class="note" x="98" y="679">ticks++，时间加一</text>
+  <text class="note" x="98" y="706">wakeup(&amp;ticks)，叫醒等时间的人</text>
+  <rect class="kernel" x="470" y="610" width="325" height="112"/>
+  <text class="main" x="493" y="648">设置下一次闹钟</text>
+  <text class="note" x="493" y="679">r_time() + 1000000</text>
+  <text class="note" x="493" y="706">让时钟中断继续周期性发生</text>
+  <rect class="wait" x="865" y="610" width="325" height="112"/>
+  <text class="main" x="888" y="648">当前进程让出 CPU</text>
+  <text class="note" x="888" y="679">state 改成 RUNNABLE</text>
+  <text class="note" x="888" y="706">它以后还可以继续运行</text>
+  <rect class="event" x="1260" y="610" width="325" height="112"/>
+  <text class="main" x="1283" y="648">scheduler()</text>
+  <text class="note" x="1283" y="679">在可运行进程中挑一个</text>
+  <text class="note" x="1283" y="706">通常在调度器专用栈上运行</text>
+  <rect class="kernel" x="1655" y="610" width="65" height="112"/>
+  <text class="main" x="1667" y="650">换</text>
+  <text class="note" x="1661" y="681">人</text>
+  <path class="line" d="M400 666 L470 666"/>
+  <path class="line" d="M795 666 L865 666"/>
+  <path class="line" d="M1190 666 L1260 666"/>
+  <path class="line" d="M1585 666 L1655 666"/>
+  <text class="note" x="100" y="792">注意：yield() 的意思不是“当前进程结束”，只是“我先休息一下，别人也有机会运行”。</text>
+
+  <rect class="panel" x="40" y="880" width="1720" height="300"/>
+  <text class="heading" x="65" y="922">第三段：新进程恢复现场，回到用户态</text>
+  <rect class="gray" x="75" y="965" width="390" height="125"/>
+  <text class="main" x="98" y="1005">prepare_return()</text>
+  <text class="note" x="98" y="1036">准备好返回用户态需要的寄存器</text>
+  <text class="note" x="98" y="1067">设置 sepc、sstatus、trapframe</text>
+  <rect class="kernel" x="540" y="965" width="390" height="125"/>
+  <text class="main" x="563" y="1005">trampoline.S / userret</text>
+  <text class="note" x="563" y="1036">恢复用户寄存器，切回用户页表</text>
+  <text class="note" x="563" y="1067">像从暂停位置接着做</text>
+  <rect class="user" x="1005" y="965" width="390" height="125"/>
+  <text class="main" x="1028" y="1005">sret：回到用户态</text>
+  <text class="note" x="1028" y="1036">继续运行被选中的进程</text>
+  <text class="note" x="1028" y="1067">下次中断时还会重复这条路</text>
+  <rect class="wait" x="1470" y="965" width="250" height="125"/>
+  <text class="main" x="1493" y="1005">循环往复</text>
+  <text class="note" x="1493" y="1036">多个进程轮流用 CPU</text>
+  <text class="note" x="1493" y="1067">看起来像“同时运行”</text>
+  <path class="line" d="M465 1027 L540 1027"/>
+  <path class="line" d="M930 1027 L1005 1027"/>
+  <path class="line" d="M1395 1027 L1470 1027"/>
+  <text class="note" x="75" y="1140">记忆：中断 → 保存现场 → 记时间 → yield → scheduler → 恢复现场 → sret。</text>
+</svg>
