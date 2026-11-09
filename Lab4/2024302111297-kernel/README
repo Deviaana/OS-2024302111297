@@ -1,0 +1,87 @@
+# Lab4 — 进程上下文切换与调度策略
+
+学号：`2024302111297`
+
+本工程在 lab1–lab3 骨架上完成：
+
+- 每进程 `p->lock`、全局 `wait_lock`、每 CPU `struct cpu` 调度器上下文；
+- `swtch.S` 保存/恢复 14 个 callee-saved 寄存器；
+- `sched` / `yield` / `sleep(chan, lk)` / `wakeup(chan)` 与丢失唤醒防护；
+- 时钟中断抢占、`pause(n)`、可选 `kill(pid)`；
+- `schedstat`、`time_rdtime`、`setickets` 三个观测/配置系统调用；
+- 学号策略 `LAB4_POLICY_ID=7`：步长调度，默认票数 `hi=1 / spin=2 / sh=4`；
+- lab3 的页表、guard page、受控拷贝、`fork/exec/sbrk` 与内存上限回归。
+
+详细设计与实测数据见 `设计笔记-lab4.md`。
+
+## 构建
+
+```bash
+make clean
+make -j2
+```
+
+生成 `kernel/kernel`。链接时仍可能出现
+`LOAD segment with RWX permissions` 警告；这是 lab3 基线内核整体恒等映射的既有约束。
+
+## 运行
+
+```bash
+make qemu
+# 或指定核数（本实验验收基线为 1）
+make qemu CPUS=1
+```
+
+启动后先输出 Banner 和 `DUMP-PAGETABLE` 块，然后进入 `sh> `。
+
+## 测试
+
+交互执行：
+
+```text
+hi
+badecall
+badaccess
+guardtest
+copytest
+memcap
+bench
+alt
+stride_test
+```
+
+自动复跑：
+
+```bash
+python3 support/inject_uart.py \
+    --tree . --script support/lab4-tests.txt --log lab4-test.log
+```
+
+已通过的判据：
+
+```text
+TEST-1 PASS / TEST-3a PASS / TEST-3b PASS
+GUARDTEST PASS / COPYTEST PASS / TEST-4 PASS
+RESULT avg_fork_wait = 10306
+RESULT concurrent_children = 8
+PASS: bench
+alt done
+RESULT stride_ratio = 76:224
+PASS: stride
+```
+
+## 目录
+
+- `kernel/spinlock.c` — 自旋锁、关中断嵌套与 `holding()`；
+- `kernel/swtch.S` — 内核执行流上下文切换；
+- `kernel/proc.c` — 进程状态机、调度器、锁序、`wait/exit`、步长策略；
+- `kernel/trap.c` — 时钟 tick、用户态抢占与逐进程 CPU 统计；
+- `kernel/sysproc.c` — `pause/kill/schedstat/time_rdtime/setickets`；
+- `kernel/console.c` — 以 `sleep/wakeup` 实现的 UART 阻塞读取；
+- `user/bench.c`、`user/stride_test.c`、`user/alt.c` — Lab4 验收与观测程序。
+
+## 当前边界
+
+验收目标为单核 `-smp 1`。内核实现了每 CPU 数据结构与锁归属，但 `entry.S` 仍按
+lab1 基线停放副核，未完成双核挑战中的分核启动栈与屏障；内核态不做抢占，只在
+用户态时钟中断返回路径调用 `yield()`。这些不影响 Lab4 单核验收。

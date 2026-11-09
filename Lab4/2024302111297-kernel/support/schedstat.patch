@@ -1,0 +1,40 @@
+# schedstat.patch — lab4 观测/配置系统调用规格说明
+#
+# 学生按本规格自行实现以下三个系统调用即可,无需真正打补丁。
+# 语义(ABI,测试程序依赖此契约):
+#
+#   int schedstat(int pid, int *cpu_ticks, int *last_slice_ticks);   // SYS_schedstat = 23
+#   返回 0 成功;-1 参数错误或目标进程不存在。
+#     pid              — 目标进程;-1 表示查询自身(须为存活进程,父子均可,
+#                        供测试框架在子进程存活期采样;已退出进程返回 -1)
+#     cpu_ticks        — 目标进程自创建以来累计获得的 CPU tick 数
+#     last_slice_ticks — 目标进程最近一次连续运行的时间片长度(tick),
+#                        被调度器分发时清零重新累计
+#
+#   unsigned long time_rdtime(void);                                 // SYS_time_rdtime = 24
+#     返回 time CSR 的当前值(内核中 r_time()),单位为硬件计时器计数(QEMU virt 为 10MHz),
+#     不是 tick。测试框架用它计时与计算截止时刻。
+#
+#   int setickets(int tickets);                                      // SYS_setickets = 25
+#     设置调用进程的票数;tickets < 1 返回 -1,成功返回 0。
+#     设定值覆盖策略的默认票数(含 ID 3 的静态默认值与 ID 5/7 按进程名分配的默认值);
+#     非彩票/步长策略(ID 0–2、8–9)可只记录该值、不参与调度,但仍须返回 0。
+#
+# --- kernel/proc.h: struct proc 内新增 ---
+#   int cpu_ticks;            // 累计 CPU tick
+#   int last_slice_ticks;     // 本次连续运行 tick,分发时清零
+#   int tickets;              // 票数(彩票/步长策略使用)
+#
+# --- kernel/proc.c: scheduler() 选中进程后(执行 swtch 前)---
+#   p->last_slice_ticks = 0;
+#
+# --- kernel/trap.c: usertrap() 时钟中断分支(决定让出前)---
+#   p->cpu_ticks++;
+#   p->last_slice_ticks++;
+#   (只统计从用户态进入的时钟中断;内核态被时钟中断打断不计数)
+#
+# --- kernel/sysproc.c(或等价位置): sys_schedstat / sys_time_rdtime / sys_setickets ---
+#   schedstat:取参数 pid 与两个用户指针;查进程表(持 p->lock 读取计数),
+#   释放锁后经 copyout 写回用户指针(lab3 之后的合法路径)。
+#
+# --- 用户侧:user.h / usys.pl 已在本包 gifts/ 中更新,以包内版本为准 ---

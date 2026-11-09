@@ -1,0 +1,17 @@
+学号 2024302111297 的个性化参数(与各实验说明书公式一致)
+==================================================
+LAB1_BANNER_PROTOCOL       = 1      0=明文+换行 1=每字节后'.' 2=整段后回显校验和
+LAB1_STACK_KB              = 8      内核栈大小(KB)
+LAB2_TICK                  = 2      时间片 tick
+LAB2_BUF_SEMANTICS         = 1      0=行缓冲 1=字符流
+LAB2_BUF_SIZE              = 64     输入缓冲区字节
+LAB3_ALLOC_ORDER           = 1      0=升序 1=降序 2=中点
+LAB3_GUARD_PAGES           = 2      每进程 guard 页数
+LAB3_MEMCAP_DELTA          = 1      内存上限 = 总页数 − 本值
+LAB4_POLICY_ID             = 7      分配表随 lab4 增量包发放(0=MLFQ 1=彩票 2=步长 3=优先级…)
+LAB5_REFCNT_SCHEME         = 1      0=PTE保留位 1=全局数组 2=页表扫描
+LAB5_COW_BUDGET            = 193    缺页复制预算(次)
+LAB5_KILL_SEMANTICS        = 1      0=立即不复制 1=完成当前复制
+LAB6_REPLACE_POLICY        = 1      0=LRU 1=FIFO 2=CLOCK 3=LFU
+LAB6_BUF_SLOTS             = 9      缓存槽位数
+LAB6_LOG_BLOCKS            = 25     日志块数
