@@ -1,0 +1,5 @@
+# Additional proportional-scheduling check for LAB4_POLICY_ID=7.
+SEND lottery_test
+EXPECT RESULT lottery_ratio =
+EXPECT PASS: lottery
+WAIT 300

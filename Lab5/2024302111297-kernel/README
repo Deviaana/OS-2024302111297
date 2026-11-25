@@ -1,0 +1,114 @@
+# Lab5 - fork 写时复制、引用计数与 exec 参数栈
+
+学号：`2024302111297`
+
+本工程以真实的 Lab4 抢占式调度内核为基线，并合入 Lab5 功能。当前内核同时包含：
+
+- 每进程 `p->lock`、全局 `wait_lock`、`swtch` 上下文切换和 `scheduler` 主循环；
+- 用户态时钟中断抢占、`yield`、`sleep/wakeup`、`pause`、`kill`；
+- `LAB4_POLICY_ID=7` 的步长调度，默认票数为 `hi=1 / spin=2 / sh=4`；
+- `schedstat`、`time_rdtime`、`setickets` 观测接口；
+- `fork` 用户页写时复制、物理页引用计数与最后引用释放；
+- `pmc(0)` / `pmc(1)` COW 观测接口（`SYS_pmc=26`）；
+- `exec` 的 `argc/argv` 用户栈装配、NULL 哨兵和 16 字节对齐；
+- Lab3 的页表、guard page、受控拷贝与内存上限回归能力。
+
+## 个性化参数
+
+- `LAB4_POLICY_ID=7`：步长调度；
+- `LAB5_REFCNT_SCHEME=1`：全局物理页引用计数数组；
+- `LAB5_COW_BUDGET=193`：单进程 COW 复制配额；
+- `LAB5_KILL_SEMANTICS=1`：完成当前复制后退出；
+- `LAB2_TICK=2`、`LAB3_GUARD_PAGES=2`、`LAB3_MEMCAP_DELTA=1`。
+
+## 构建
+
+在 MSYS2 UCRT64 环境执行：
+
+```bash
+make clean
+make -j2
+```
+
+生成 `kernel/kernel`。链接阶段仅有基线统一映射产生的
+`LOAD segment with RWX permissions` 警告。
+
+## 运行
+
+```bash
+make qemu
+```
+
+或：
+
+```bash
+qemu-system-riscv64 -machine virt -bios none \
+  -kernel kernel/kernel -m 128M -smp 1 -nographic
+```
+
+启动后依次输出 Banner、`LAB5 kref selftest: PASS`、页表快照，然后进入 `sh>`。
+
+## 自动测试
+
+```powershell
+$env:Path = 'D:\msys64\ucrt64\bin;D:\msys64\usr\bin;' + $env:Path
+python support\inject_uart.py --tree . --script support\lab5-course.txt --log lab5-course.log
+python support\inject_uart.py --tree . --script support\lab4-tests.txt --log lab4-tests.log
+python support\inject_uart.py --tree . --script support\lottery-check.txt --log lottery-check.log
+python support\inject_uart.py --tree . --script support\regression.txt --log regression-lab5.log
+python support\inject_uart.py --tree . --script support\spin-check.txt --log spin-check-lab5.log
+```
+
+## 实测结果
+
+Lab5：
+
+```text
+T5-1 copies: 0 -> 1 (delta 1)
+T5-1 PASS: fork-immediately-exec ~zero copy
+T5-2 copies delta = 2 (expect 2)
+T5-2 PASS: pair-write exact 2 copies, data isolated
+T5-3 PASS: argc=2 argv[0]=echo aligned
+T5-SELF ALL PASS
+```
+
+Lab4：
+
+```text
+RESULT avg_fork_wait = 2915
+PASS: bench
+RESULT concurrent_children = 8
+alt done
+RESULT stride_ratio = 76:224
+PASS: stride
+RESULT lottery_ratio = 148:52
+PASS: lottery
+```
+
+Lab3 回归：
+
+```text
+TEST-1 PASS / TEST-3a PASS / TEST-3b PASS
+GUARDTEST PASS / COPYTEST PASS / TEST-4 PASS
+```
+
+定时器与 UART 检查：`spin 0` 启动，随后持续输出递增计数并正常结束。
+
+## 关键文件
+
+- `kernel/kalloc.c`：位图分配器、`refcnt[]`、`kref_*`、`kcow_*`；
+- `kernel/vm.c`：COW 共享、写缺页分离、`copyout` 兼容；
+- `kernel/trap.c`：`scause==15` 与 Lab4 时钟抢占路径；
+- `kernel/proc.c`：Lab4 调度器、`fork/exec/wait/exit`、`argv` 栈；
+- `kernel/spinlock.c`、`kernel/swtch.S`：Lab4 锁与上下文切换；
+- `user/cowtest.c`、`user/zerocopy.c`、`user/cowpair.c`、`user/echo.c`：Lab5 测试；
+- `user/bench.c`、`user/alt.c`、`user/stride_test.c`：Lab4 测试。
+
+详细设计见 `设计笔记-lab5.md`，本次日志为 `lab5-course.log`、
+`lab4-tests.log`、`lottery-check.log`、`regression-lab5.log` 和
+`spin-check-lab5.log`。
+
+## 当前边界
+
+验收基线为单 hart（`-smp 1`）。代码保留每 CPU 数据结构和自旋锁，但
+`entry.S` 尚未启动副核，因此不声明完整 SMP 能力；跨核 TLB shootdown 不在本次实验范围内。

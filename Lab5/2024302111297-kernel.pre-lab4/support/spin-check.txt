@@ -1,0 +1,6 @@
+# Verify that timer interrupts and UART service remain stable while the
+# user-mode busy loop occupies the CPU (lab2 synchronous process model).
+SEND spin
+EXPECT spin 0
+WAIT 1000
+EXPECT spin [1-9][0-9]*

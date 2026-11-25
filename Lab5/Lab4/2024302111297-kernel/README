@@ -1,0 +1,102 @@
+# Lab3 — SV39 三级页表与物理内存管理
+
+学号：`2024302111297`
+
+本工程在 lab1/lab2 骨架上完成：
+
+- 位图物理页分配器（降序分配、`LAB3_MEMCAP_DELTA` 配额、清零/垃圾填充）；
+- SV39 三级页表 `walk` / `mappages` / `uvmunmap` / `uvmcopy`；
+- 内核恒等映射、用户独立地址空间、guard page、trapframe、trampoline；
+- `copyin/copyout/copyinstr` 受控拷贝；
+- `fork` 深拷贝、`exec` 失败保留旧地址空间、EAGER `sbrk`；
+- `dump_pagetable` 观测输出。
+
+设计说明见 `设计笔记-lab3.md`。
+
+## 构建
+
+在 MSYS2 UCRT64 环境中执行：
+
+```bash
+make -j2
+```
+
+生成 `kernel/kernel`。构建中可能出现
+`LOAD segment with RWX permissions` 链接警告，这是本阶段 `kernel.ld`
+未导出 `etext`、内核暂时统一映射为 RWX 的已知约束。
+
+## 运行
+
+```bash
+make qemu
+```
+
+也可直接运行：
+
+```bash
+qemu-system-riscv64 -machine virt -bios none \
+  -kernel kernel/kernel -m 128M -smp 1 -nographic
+```
+
+启动后先输出 Banner 和 `DUMP-PAGETABLE` 块，然后进入 `sh> `。
+
+## 测试
+
+交互执行：
+
+```text
+hi
+badecall
+bufstorm
+badaccess
+guardtest
+copytest
+memcap
+```
+
+预期关键输出：
+
+```text
+TEST-1 PASS
+TEST-3a PASS
+TEST-3b PASS
+GUARDTEST PASS
+COPYTEST PASS
+TEST-4 PASS
+```
+
+自动化回归（Windows PowerShell，QEMU 需在 `PATH` 中）：
+
+```powershell
+$env:Path = 'D:\msys64\ucrt64\bin;' + $env:Path
+& 'D:\python10\python.exe' support\inject_uart.py `
+    --tree . --script support\regression.txt --log regression.log
+```
+
+Busy-loop / 定时器检查：
+
+```powershell
+& 'D:\python10\python.exe' support\inject_uart.py `
+    --tree . --script support\spin-check.txt --log spin-check.log
+```
+
+Banner 协议自检：
+
+```powershell
+& 'D:\python10\python.exe' check_expect.py 2024302111297
+```
+
+## 目录
+
+- `kernel/kalloc.c` — 位图页面分配器；
+- `kernel/vm.c` — 页表遍历、映射/回滚、受控拷贝、页表 dump；
+- `kernel/proc.c` — 进程地址空间、fork/exec/sbrk/wait/exit；
+- `kernel/trap.c`、`kernel/kernelvec.S`、`kernel/trampoline.S` — 陷入与跳板；
+- `user/copytest.c` — 跨页 copyin 自测；
+- `user/guardtest.c` — 栈下方 guard page 自测；
+- `support/regression.txt` — 官方测试与 lab2 回归脚本。
+
+## 当前边界
+
+`sbrk` 当前为 EAGER；`wait/exit` 沿用 lab2 的同步进程模型；没有
+LAZY 缺页、COW、文件系统或抢占式调度。这些分别属于 lab4/lab5/lab6。

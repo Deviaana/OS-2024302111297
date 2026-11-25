@@ -1,0 +1,15 @@
+# 预置构建配置 —— lab5 Makefile 升级集成片段(COW 与参数栈测试程序接入; 规则请勿修改)
+#
+# 用途:把 support/tests/ 下的 lab5 课程测试程序并入内嵌构建链。
+# 合并方式:
+#   1) 先把 support/tests/{zerocopy.c,cowpair.c,echo.c} 拷入 user/(保持包内版本);
+#   2) 把下面一行追加到 Makefile 中 UPROGS 定义之后;
+#   3) kernel/syscall.h、user/user.h、user/usys.pl、user/sh.c 以本包 gifts/ 版本为准
+#      (新增 SYS_pmc=26 及支持空格分词传参的最小 shell, 见《能力目标与接口约定》)。
+#
+# 测试程序的输出规范(自动评测与现场验收读取; 详见 support/tests/README-tests.md):
+#   zerocopy:    "T5-1 copies: <c0> -> <c1> (delta <d>)" 与 "T5-1 PASS: fork-immediately-exec ~zero copy"
+#   cowpair:     "T5-2 copies delta = 2 (expect 2)" 与 "T5-2 PASS: pair-write exact 2 copies, data isolated"
+#   echo hi:     输出参数行 "hi" 与 "T5-3 PASS: argc=2 argv[0]=echo aligned"
+
+UPROGS += zerocopy cowpair echo

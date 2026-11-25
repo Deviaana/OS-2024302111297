@@ -1,0 +1,19 @@
+# UART-driven regression for the lab3 kernel.
+SEND hi
+EXPECT hi: user program running
+WAIT 500
+SEND badecall
+EXPECT TEST-1 PASS
+WAIT 500
+SEND badaccess
+EXPECT TEST-3a PASS
+EXPECT TEST-3b PASS
+WAIT 500
+SEND guardtest
+EXPECT GUARDTEST PASS
+WAIT 500
+SEND copytest
+EXPECT COPYTEST PASS
+WAIT 500
+SEND memcap
+EXPECT TEST-4 PASS

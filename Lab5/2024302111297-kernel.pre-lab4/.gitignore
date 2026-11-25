@@ -1,0 +1,24 @@
+# 编译器产物(riscv64 工具链)
+*.o
+*.d
+kernel/kernel
+*.elf
+user-flat/
+
+# 构建期生成物(由 Makefile 规则生成,不入库)
+kernel/userimg.S
+kernel/userentry.S
+user/usys.S
+
+# 编辑器 / Office 临时文件
+~$*
+__pycache__/
+.DS_Store
+
+# 验收脚本 inject_uart.py 需要一个占位磁盘镜像(0 字节即可)
+fs.img
+# 交付包本身不入库
+提交-lab2-*.zip
+
+# 参考资料副本(MIT xv6 源码阅读参考,不属于本实验交付内容)
+xv6-riscv/

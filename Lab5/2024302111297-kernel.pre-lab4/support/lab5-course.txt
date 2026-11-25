@@ -1,0 +1,13 @@
+# Lab5 course tests and the submitted self-test.
+SEND zerocopy
+EXPECT T5-1 PASS: fork-immediately-exec ~zero copy
+WAIT 300
+SEND cowpair
+EXPECT T5-2 copies delta = 2 \(expect 2\)
+EXPECT T5-2 PASS: pair-write exact 2 copies, data isolated
+WAIT 300
+SEND echo hi
+EXPECT T5-3 PASS: argc=2 argv\[0\]=echo aligned
+WAIT 300
+SEND cowtest
+EXPECT T5-SELF ALL PASS

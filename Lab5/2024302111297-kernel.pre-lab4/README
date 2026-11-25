@@ -1,0 +1,89 @@
+# Lab5 — 写时复制 fork、引用计数与 exec 参数栈
+
+学号：`2024302111297`
+
+个性化参数：
+
+- `LAB5_REFCNT_SCHEME=1`：全局物理页引用计数数组；
+- `LAB5_COW_BUDGET=193`：单进程 COW 复制配额；
+- `LAB5_KILL_SEMANTICS=1`：完成当前复制后退出。
+
+本工程在 lab3/lab4 内核骨架上完成：
+
+- `kalloc.c` 的物理页引用计数、归零回收与 `kref_selftest`；
+- `uvmcopy` 只读共享、`cow_alloc` 写缺页分离和 `refcnt==1` 原地恢复；
+- `usertrap` 的 `scause==15` 处理、`copyout` 的 COW 兼容；
+- `pmc(0)`/`pmc(1)` 观测系统调用（`SYS_pmc=26`）；
+- `exec` 的新用户栈 `argc/argv` 装配、NULL 哨兵与 16 字节对齐；
+- 课程测试 `zerocopy/cowpair/echo` 与综合自测 `cowtest`。
+
+设计说明见 `设计笔记-lab5.md`。
+
+## 构建
+
+在 MSYS2 UCRT64 环境中执行：
+
+```bash
+make clean
+make -j2
+```
+
+生成 `kernel/kernel`。链接阶段可能出现
+`LOAD segment with RWX permissions` 警告，这是基线内核统一映射 RWX 的已知约束。
+
+## 运行
+
+```bash
+make qemu
+```
+
+也可直接运行：
+
+```bash
+qemu-system-riscv64 -machine virt -bios none \
+  -kernel kernel/kernel -m 128M -smp 1 -nographic
+```
+
+启动后先输出 Banner、引用计数自测通过行、页表快照，然后进入 `sh>`。
+
+## 课程测试
+
+交互执行：
+
+```text
+zerocopy
+cowpair
+echo hi
+cowtest
+```
+
+预期关键输出：
+
+```text
+T5-1 PASS: fork-immediately-exec ~zero copy
+T5-2 PASS: pair-write exact 2 copies, data isolated
+T5-3 PASS: argc=2 argv[0]=echo aligned
+T5-SELF ALL PASS
+```
+
+自动化串口测试：
+
+```powershell
+$env:Path = 'D:\msys64\ucrt64\bin;D:\msys64\usr\bin;' + $env:Path
+python support\inject_uart.py --tree . --script support\lab5-course.txt --log lab5-course.log
+python support\inject_uart.py --tree . --script support\regression.txt --log regression-lab5.log
+python support\inject_uart.py --tree . --script support\spin-check.txt --log spin-check-lab5.log
+```
+
+## 目录
+
+- `kernel/kalloc.c` — 位图分配器、`refcnt[]`、`pmc` 计数；
+- `kernel/vm.c` — COW 共享、写缺页分离、`copyout` 兼容；
+- `kernel/trap.c` — `scause==15` 用户陷阱处理；
+- `kernel/proc.c` — `fork`、`exec` 参数栈、进程回收；
+- `user/cowtest.c` — 综合自测；
+- `support/lab5-course.txt` — Lab5 串口测试脚本。
+
+## 当前边界
+
+基线采用单 hart 启动模型，没有 lab4 的抢占式调度器或 `bench` 程序；因此本次全量回归覆盖现有 lab3 测试、串口/定时器检查以及 Lab5 三项课程测试。COW 和引用计数代码已使用自旋锁与原子操作，但完整 SMP 支持还需要调度器、跨核唤醒和 TLB shootdown。
